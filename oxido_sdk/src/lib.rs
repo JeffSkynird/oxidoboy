@@ -248,3 +248,62 @@ fn glyph5x7(ch: char) -> Option<[u8; 7]> {
     };
     Some(g)
 }
+
+// ====================== Sprite Animation ==========================
+#[derive(Copy, Clone)]
+pub struct AnimFrame {
+    pub tile: usize,   // index in the atlas
+    pub millis: u32,   // frame duration in ms (>=1)
+    pub fx: bool,      // horizontal flip
+    pub fy: bool,      // vertical flip
+}
+
+pub struct Animator {
+    frames: &'static [AnimFrame],
+    pub idx: usize,
+    acc_ms: u32,
+    pub playing: bool,
+    pub looped: bool,
+    pub speed: f32,    // 1.0 = normal
+}
+
+impl Animator {
+    pub fn new(frames: &'static [AnimFrame]) -> Self {
+        Self {
+            frames,
+            idx: 0,
+            acc_ms: 0,
+            playing: true,
+            looped: true,
+            speed: 1.0,
+        }
+    }
+
+    pub fn reset(&mut self) { self.idx = 0; self.acc_ms = 0; self.playing = true; }
+
+    pub fn tick(&mut self, dt_ms: f32) {
+        if !self.playing || self.frames.is_empty() { return; }
+        let mut dt = (dt_ms.max(0.0) * self.speed).round() as u32;
+        while dt > 0 {
+            let dur = self.frames[self.idx].millis.max(1);
+            let step = dur.saturating_sub(self.acc_ms);
+            if dt >= step {
+                dt -= step;
+                self.acc_ms = 0;
+                self.idx += 1;
+                if self.idx >= self.frames.len() {
+                    if self.looped { self.idx = 0; } else { self.idx = self.frames.len()-1; self.playing = false; break; }
+                }
+            } else {
+                self.acc_ms += dt;
+                dt = 0;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn current(&self) -> AnimFrame {
+        if self.frames.is_empty() { AnimFrame { tile: 0, millis: 1, fx: false, fy: false } }
+        else { self.frames[self.idx] }
+    }
+}
