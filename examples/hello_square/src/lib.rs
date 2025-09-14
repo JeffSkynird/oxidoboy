@@ -253,6 +253,16 @@ pub extern "C" fn oxido_draw_ptr() -> *const u8 {
         // HITBOX (debug)
         //f.rect(xi, yi, PLAYER_W, PLAYER_H, pal.color(3));
 
+        // shadow/outline 1px using the darkest color of the palette
+        let shadow_col = pal.color(0);
+        let pal_shadow = Palette([0, shadow_col, shadow_col, shadow_col]);
+
+        atlas().blit(&mut f, xi + ox - 1, yi + oy,     tile, &pal_shadow, fx, fy, true);
+        atlas().blit(&mut f, xi + ox + 1, yi + oy,     tile, &pal_shadow, fx, fy, true);
+        atlas().blit(&mut f, xi + ox,     yi + oy - 1, tile, &pal_shadow, fx, fy, true);
+        atlas().blit(&mut f, xi + ox,     yi + oy + 1, tile, &pal_shadow, fx, fy, true);
+
+        // sprite normal
         atlas().blit(&mut f, xi + ox, yi + oy, tile, pal, fx, fy, true);
 
         // HUD

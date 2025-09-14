@@ -269,6 +269,7 @@ pub struct Cartridge {
     pub wasm_path: std::path::PathBuf,
     pub w: u32,
     pub h: u32,
+    pub scale: u32
 }
 
 pub fn run(cart: Cartridge) -> Result<()> {
@@ -276,10 +277,17 @@ pub fn run(cart: Cartridge) -> Result<()> {
 
     // Event loop
     let event_loop = EventLoop::new();
+
+    let win_w = cart.w * cart.scale;
+    let win_h = cart.h * cart.scale;
+
     let window = WindowBuilder::new()
         .with_title("OxidoBoy")
-        .with_inner_size(LogicalSize::new(cart.w as f64, cart.h as f64))
+        .with_inner_size(LogicalSize::new(win_w as f64, win_h as f64))
+        // window doesn't resize below framebuffer size
+        .with_min_inner_size(LogicalSize::new(cart.w as f64, cart.h as f64))
         .build(&event_loop)?;
+
     let size = window.inner_size();
 
     // pixels
@@ -358,6 +366,15 @@ pub fn run(cart: Cartridge) -> Result<()> {
         match event {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::Resized(new_size) => {
+                    // notifies pixels of the new surface size
+                    let _ = pixels.resize_surface(new_size.width, new_size.height);
+                }
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    // HiDPI: comes as &mut; take copy and resize
+                    let size = *new_inner_size;
+                    let _ = pixels.resize_surface(size.width, size.height);
+                }
                 WindowEvent::KeyboardInput { input, .. } => {
                     let pressed = input.state == ElementState::Pressed;
                     let mut bit = match input.virtual_keycode {
