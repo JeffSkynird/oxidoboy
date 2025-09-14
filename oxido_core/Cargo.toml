@@ -1,0 +1,11 @@
+[package]
+name = "oxido_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+pixels  = "0.13"   # ← volvemos a 0.13
+winit   = "0.28"   # ← volvemos a 0.28
+wasmtime = "20"
+cpal = "0.15"
