@@ -1,5 +1,16 @@
 use oxido_sdk::*;
 use std::sync::OnceLock;
+use oxido_sdk::{AnimFrame, Animator};
+
+static ANIM_PLAYER_FRAMES: [AnimFrame; 4] = [
+    AnimFrame { tile: 0, millis: 120, fx: false, fy: false },
+    AnimFrame { tile: 1, millis: 120, fx: false, fy: false },
+    AnimFrame { tile: 2, millis: 120, fx: false, fy: false },
+    AnimFrame { tile: 1, millis: 120, fx: false, fy: false },
+];
+static mut ANIM_PLAYER: Option<Animator> = None;
+static mut FACE_LEFT: bool = false; // player orientation
+
 
 // --- State -----------------------------------------------------------------
 static mut FB: [u8; DEFAULT_W * DEFAULT_H * 4] = [0; DEFAULT_W * DEFAULT_H * 4];
@@ -142,6 +153,7 @@ pub extern "C" fn oxido_init() {
             a_ms:8.0, d_ms:100.0, s_lvl:0.30, r_ms:150.0,
             arp_a:-12, arp_b:0, arp_c:7, arp_rate_hz:12.0
         };
+        ANIM_PLAYER = Some(Animator::new(&ANIM_PLAYER_FRAMES));
     }
 }
 
@@ -163,6 +175,25 @@ pub extern "C" fn oxido_update(dt_ms: f32) {
 
         if !rect_collides_world(world_x_new, world_y, PLAYER_W, PLAYER_H) {
             X = new_x;
+        }
+
+        // Orientqation according to input
+        if INPUT_BITS & key_bit(Key::Left)  != 0 { FACE_LEFT = true; }
+        if INPUT_BITS & key_bit(Key::Right) != 0 { FACE_LEFT = false; }
+
+        // --- Animation: also runs with Up/Down ---
+        let moving_h = (INPUT_BITS & (key_bit(Key::Left) | key_bit(Key::Right))) != 0;
+        let moving_v = (INPUT_BITS & (key_bit(Key::Up)   | key_bit(Key::Down)))  != 0;
+        let moving = moving_h || moving_v;
+
+        if let Some(ref mut a) = ANIM_PLAYER {
+            a.playing = moving;
+            if moving {
+                a.tick(dt_ms);      // advances frames when there is movement on any axis
+            } else {
+                // to return to the first frame when it stops:
+                // a.reset();
+            }
         }
 
         // Camera X
@@ -204,9 +235,25 @@ pub extern "C" fn oxido_draw_ptr() -> *const u8 {
 
         // Background and player
         map().draw(&mut f, atlas(), pal, SCROLL_X as i32, SCROLL_Y as i32, false);
+
+        // Player (sprite 8x8 centered in hitbox 16x16)
+        let (fx, fy, tile) = if let Some(ref a) = ANIM_PLAYER {
+            let fr = a.current();
+            (fr.fx ^ unsafe { FACE_LEFT }, fr.fy, fr.tile)
+        } else { (false, false, 0) };
+
         let xi = X as i32;
-        f.rect(xi, 60, PLAYER_W, PLAYER_H, pal.color(3));
-        atlas().blit(&mut f, xi + 24, 60, 0, pal, false, false, true);
+        let yi = 60;
+        // sprite 8x8 centered in hitbox 16x16
+        let sprite_w = 8;
+        let sprite_h = 8;
+        let ox = (PLAYER_W - sprite_w) / 2; // 4
+        let oy = (PLAYER_H - sprite_h) / 2; // 4
+
+        // HITBOX (debug)
+        //f.rect(xi, yi, PLAYER_W, PLAYER_H, pal.color(3));
+
+        atlas().blit(&mut f, xi + ox, yi + oy, tile, pal, fx, fy, true);
 
         // HUD
         f.rect(1, 1, 158, 14, pal.color(1));
