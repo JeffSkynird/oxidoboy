@@ -1,0 +1,8 @@
+[workspace]
+members = [
+  "oxido_core",
+  "oxido_sdk",
+  "oxido_cli",
+  "examples/hello_square"
+]
+resolver = "2"
