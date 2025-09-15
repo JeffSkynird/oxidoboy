@@ -42,19 +42,23 @@ You can also run a raw `.wasm` directly (specifying framebuffer size if needed):
 cargo run -p oxido_cli -- run path/to/game.wasm --width 160 --height 144
 ```
 
+![Preview 1](./examples/hello_square/images/game.png)
+
 ## CLI usage
 
 ```text
+oxido new <NAME>
+  Scaffold a minimal WASM game crate that depends on `oxido_sdk`. 
+
 oxido run <PATH> [--width <W> --height <H>]
   Run a game from a .wasm file or a .cart folder containing manifest.toml.
-
-oxido new <NAME>
-  Scaffold a minimal WASM game crate that depends on `oxido_sdk`.
 
 oxido pack <GAME_DIR> [--out <DIR>]
   Build the game for wasm32-unknown-unknown (release) and assemble a .cart folder
   with manifest + game.wasm + assets.
 ```
+
+**NOTE**: When using ```oxido new``` in development, you need to add the new module to ```cargo.toml```. Also, ensure that the new game's ```cargo.toml``` file has the correct path to the oxido_sdk.
 
 ## Writing a game (ABI)
 
@@ -109,6 +113,7 @@ title = "My Oxido Game"
 version = "0.1.0"
 width = 160
 height = 144
+scale = 3
 wasm = "game.wasm"
 ```
 
@@ -138,6 +143,29 @@ See `examples/hello_square` for a complete cartridge using palettes, tilemap, co
   [build]
   target = "wasm32-unknown-unknown"
   ```
+
+## Window scaling
+
+Use `--scale N` to set a pixel-perfect scale for the window.
+
+- **Default:** `3`.
+- **When running a `.wasm`:** the manifest is ignored. Use `--scale`.
+- **When running a `.cart` folder:** you can set `scale = N` in `cart/manifest.toml`.
+  - If `scale` exists in the manifest, it **takes precedence** over the CLI flag.
+  - If `scale` is not in the manifest, the CLI flag (or the default `3`) is used.
+
+#### Examples
+
+```bash
+# Run a raw .wasm (use CLI flag)
+cargo run -p oxido_cli -- run path/to/game.wasm --width 160 --height 144 --scale 4
+
+# Run a .cart (uses scale from manifest if present)
+cargo run -p oxido_cli -- run path/to/cart
+
+# Run a .cart and try to override by CLI (ignored if manifest has scale)
+cargo run -p oxido_cli -- path/to/cart --scale 5
+```
 
 ## License
 

@@ -25,6 +25,9 @@ enum Cmd {
         /// Height of framebuffer (used only if PATH is .wasm)
         #[arg(long, default_value_t = 144)]
         height: u32,
+        /// Window scale factor (pixel-perfect)
+        #[arg(short, long, default_value_t = 3)]
+        scale: u32,
     },
     /// Creates a new game (template) in a folder
     New {
@@ -51,23 +54,25 @@ struct Manifest {
     height: Option<u32>,
     /// binary name of the wasm inside the .cart (default "game.wasm")
     wasm: Option<String>,
+    /// Optional window scale (pixel-perfect)
+    scale: Option<u32>,                  
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Run { path, width, height } => cmd_run(path, width, height),
+        Cmd::Run { path, width, height,scale } => cmd_run(path, width, height,scale),
         Cmd::New { name } => cmd_new(name),
         Cmd::Pack { game_dir, out } => cmd_pack(game_dir, out),
     }
 }
 
-fn cmd_run(path: String, width: u32, height: u32) -> Result<()> {
+fn cmd_run(path: String, width: u32, height: u32, scale: u32) -> Result<()> {
     let p = Path::new(&path);
 
     if p.is_file() && p.extension().and_then(|s| s.to_str()) == Some("wasm") {
         // Run directly a wasm file
-        return run(Cartridge { wasm_path: p.to_path_buf(), w: width, h: height });
+        return run(Cartridge { wasm_path: p.to_path_buf(), w: width, h: height,scale });
     }
 
     if p.is_dir() {
@@ -80,10 +85,11 @@ fn cmd_run(path: String, width: u32, height: u32) -> Result<()> {
 
         let w = man.width.unwrap_or(width);
         let h = man.height.unwrap_or(height);
+        let s = man.scale.unwrap_or(scale);  
         let wasm_name = man.wasm.unwrap_or_else(|| "game.wasm".to_string());
         let wasm_path = p.join(wasm_name);
 
-        return run(Cartridge { wasm_path, w, h });
+        return run(Cartridge { wasm_path, w, h , scale: s});
     }
 
     bail!("PATH must be a .wasm or a folder .cart");
@@ -153,6 +159,7 @@ pub extern "C" fn oxido_draw_ptr() -> *const u8 {
 version = "0.1.0"
 width = 160
 height = 144
+scale = 3
 wasm = "game.wasm"
 "#;
     fs::write(root.join("cart").join("manifest.toml"), manifest)?;
@@ -225,6 +232,7 @@ fn cmd_pack(game_dir: String, out: Option<String>) -> Result<()> {
 version = "0.1.0"
 width = 160
 height = 144
+scale = 3
 wasm = "game.wasm"
 "#, pkg=pkg_name)
     };
